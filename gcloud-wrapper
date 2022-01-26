@@ -1,0 +1,361 @@
+#!/bin/bash
+
+#Change these values to create default cluster with your preferences
+random=$RANDOM
+NAME=test-$random
+ZONE="us-central1-c"
+IMAGE="UBUNTU"
+NoN="1"
+
+#This function displays the main help section on how to use the tool
+display_usage() { 
+
+	echo
+	echo -e "This is a wrapper for gcloud cli with predefined values to easily create, delete, list or connect clusters in current context and to activate or list configurations" 
+	echo -e "Usage:\n\t $(echo $0 | sed 's/\// /g' |awk '{print $NF}' ) [create] [delete] [list] [connect] [current] [activate]\n"
+	echo -e "To open help menu use -h or --help"
+	echo -e "Help usage: \n\t$(echo $0 | sed 's/\// /g' |awk '{print $NF}' ) [option] --help or $(echo $0 | sed 's/\// /g' |awk '{print $NF}' ) [option] -h" 
+
+} 
+
+#create menu help
+c_create_help() {
+
+	echo -e "Usage:\n\t$(echo $0 | sed 's/\// /g' |awk '{print $NF}' ) create\n"
+	echo -e "Note:\n\tA cluster will be creted with following values: \n"
+	echo -e "\t\t NAME\t\t\t: test-RANDOM\n"
+	echo -e "\t\t ZONE\t\t\t: $ZONE\n"
+	echo -e "\t\t IMAGE\t\t\t: $IMAGE\n"
+	echo -e "\t\t NUMBER OF NODES\t: $NoN\n"
+	echo "If you wish to create a cluster with specific configurations please use the following command"
+	echo -e "\t gcloud container clusters create CLUSTER_NAME --zone ZONE_NAME --num-nodes NO_OF_NODES --image-type=IMAGE_TYPE"
+
+}
+
+#delete menu help
+c_delete_help() {
+
+	echo -e "Usage:\n\t$(echo $0 | sed 's/\// /g' |awk '{print $NF}' ) delete\n"
+	echo -e "Note:\n\tThis will list all cluster available in current context"
+	echo -e "\tSelect an option and that cluster will be deleted"
+
+}
+
+#list menu help
+c_list_help() {
+
+	echo -e "Usage:\n\t$(echo $0 | sed 's/\// /g' |awk '{print $NF}' ) list\n"
+	echo -e "Note:\n\tThis will list all cluster available in current context"
+
+}
+
+#connect menu help
+c_connect_help() {
+
+	echo -e "Usage:\n\t$(echo $0 | sed 's/\// /g' |awk '{print $NF}' ) connect\n"
+	echo -e "Note:\n\tThis will list all cluster available in current context"
+	echo -e "\tSelect an option and kubeconfig will be updated with it"
+
+}
+
+#current menu help
+c_current_help() {
+
+	echo -e "Usage:\n\t$(echo $0 | sed 's/\// /g' |awk '{print $NF}' ) current\n"
+	echo -e "Note:\n\tThis will list the active configuration"
+
+}
+
+#activate menu help
+c_activate_help() {
+
+	echo -e "Usage:\n\t$(echo $0 | sed 's/\// /g' |awk '{print $NF}' ) activate\n"
+	echo -e "Note:\n\tThis will list all configurations available"
+	echo -e "\tSelect an option and that configuration will be activated"
+
+}
+
+#function to install kubearmor cli
+install_karmor()
+{
+        echo "karmor cli tool not found. Installing now:"
+        curl -sfL https://raw.githubusercontent.com/kubearmor/kubearmor-client/main/install.sh | sudo sh -s -- -b /usr/local/bin
+}
+
+#function to install cilium cli
+install_cilium() {
+        echo "cilium cli tool not found. Installing now:"
+        curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz{,.sha256sum}
+        sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
+        sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
+        rm cilium-linux-amd64.tar.gz{,.sha256sum}
+}
+
+#function to display active configuration 
+c_current() {
+	gcloud config list
+}
+
+#function to create a new cluster with predefined configuration
+c_create() {
+
+	echo -e "Creating Cluster: \n"
+	echo -e "\t\t NAME\t\t\t: $NAME\n"
+	echo -e "\t\t ZONE\t\t\t: $ZONE\n"
+	echo -e "\t\t IMAGE\t\t\t: $IMAGE \n"
+	echo -e "\t\t NUMBER OF NODES\t: $NoN\n"
+	gcloud container clusters create $NAME --zone $ZONE --num-nodes $NoN --image-type=$IMAGE
+	gcloud container clusters get-credentials $NAME --zone $ZONE
+
+
+	echo "Cluster created!"
+	echo -e "1. KubeArmor \n2. Cilium"
+	echo -ne "Do you wish to install any of the above? [default no] "
+	
+	read choice
+
+	if [[ $choice == "1" ]] 
+	then 
+		
+		command -v curl >/dev/null 2>&1 || 
+                { 
+                        echo "curl not found!"
+                        exit 1
+                }
+        command -v karmor >/dev/null 2>&1 ||
+                {
+                        install_karmor
+                }
+
+		karmor install
+	elif [[ $choice == "2" ]]
+	then
+		
+		command -v curl >/dev/null 2>&1 || 
+                { 
+                        echo "curl not found!"
+                        exit 1
+                }
+		command -v cilium >/dev/null 2>&1 ||
+                {
+                        install_cilium
+                }
+
+		cilium install
+	fi
+
+} 
+
+#function to connect to a specific cluster
+c_connect() {
+
+	list_num=$(gcloud container clusters list | wc -l)
+	list_num=$((list_num-1))
+	if [[ $list_num < 1 ]]
+	then
+		echo -ne "No clusters foud. Do you wish to create one now? [default no] "
+		read create_now
+		if [[ $create_now == 'y' || $create_now == 'Y' || $create_now == 'yes' || $create_now == 'Yes' || $create_now == 'YES' ]]
+		then
+			c_create
+		else 
+			exit 0
+		fi
+
+	fi
+
+	d=2
+	echo
+	echo "Found $list_num clusters."
+
+	for (( c=1; c<=list_num; c++ ))
+	do  
+   		echo -ne "\n\t$c. "
+   		dval=$(gcloud container clusters list | sed ''$d'q;d' | awk '{print $1 " [ " $2 " ] "}')
+   		echo $dval
+   		((++d))
+	done
+	echo
+	echo -en "Please select which one to connect to: "
+	read con_num
+	((++con_num))
+
+	echo 
+	echo -ne "Connecting to "
+	gcloud container clusters list  | sed ''$con_num'q;d' | awk '{print $1 " [ " $2 " ] "}'
+
+	gcloud container clusters get-credentials $(gcloud container clusters list | sed ''$con_num'q;d' | awk '{print $1}') --zone $(gcloud container clusters list  | sed ''$con_num'q;d' | awk '{print $2}')
+
+}
+
+#function to list all clusters in current context
+c_list() {
+
+	list_num=$(gcloud container clusters list | wc -l)
+	list_num=$((list_num-1))
+	if [[ $list_num < 1 ]]
+	then
+		echo -ne "No clusters foud. Do you wish to create one now? [default no] "
+		read create_now
+		if [[ $create_now == 'y' || $create_now == 'Y' || $create_now == 'yes' || $create_now == 'Yes' || $create_now == 'YES' ]]
+		then
+			c_create
+		else 
+			exit 0
+		fi
+	else 
+		gcloud container clusters list
+	fi
+
+}
+
+#function to delete specific cluster from current context
+c_delete() {
+
+	list_num=$(gcloud container clusters list | wc -l)
+	list_num=$((list_num-1))
+	d=2
+	echo
+	echo "Found $list_num clusters."
+
+	for (( c=1; c<=list_num; c++ ))
+	do  
+   		echo -ne "\n\t$c. "
+   		dval=$(gcloud container clusters list | sed ''$d'q;d' | awk '{print $1 " [ " $2 " ] "}')
+   		echo $dval
+   		((++d))
+	done
+	echo
+	echo -en "Please select which one to delete: "
+	read delete_num
+	((++delete_num))
+
+	echo 
+	echo -ne "Deleting "
+	gcloud container clusters list  | sed ''$delete_num'q;d' | awk '{print $1 " [ " $2 " ] "}'
+
+	echo "y" | gcloud container clusters delete $(gcloud container clusters list | sed ''$delete_num'q;d' | awk '{print $1}') --zone $(gcloud container clusters list  | sed ''$delete_num'q;d' | awk '{print $2}')
+
+}
+
+#function to activate a configuration
+c_activate() {
+
+	list_num=$(gcloud config configurations list | wc -l)
+	list_num=$((list_num-1))
+	d=2
+	echo
+	echo "Found $list_num configurations."
+	#printf "%-10s%-4s|\n"  "${i:0:10}" " "
+	#echo -e "\t#\tNAME\tIS_ACTIVE\tACCOUNT\tPROJECT\tCOMPUTE_DEFAULT_ZONE\tCOMPUTE_DEFAULT_REGION"
+	#| awk '{print "\t" $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 }'
+	echo -ne "\n\t#   "
+	gcloud config configurations list | sed '1q;d'
+	for (( c=1; c<=list_num; c++ ))
+	do  
+   		echo -ne "\n\t$c   "
+   		gcloud config configurations list | sed ''$d'q;d' 
+   		#echo $dval
+   		((++d))
+	done
+	echo
+	echo -en "Please select which one to activate: "
+	read active_num
+	((++active_num))
+
+	echo 
+	echo -ne "Activating "
+	gcloud config configurations list  | sed ''$active_num'q;d' | awk '{print $1 " [ " $2 " ] "}'
+	gcloud config configurations activate $(gcloud config configurations list | sed ''$active_num'q;d' | awk '{print $1}')
+
+}
+
+# check if the first arguement is help 
+if [[ ( $1 == "--help") ||  $1 == "-h" ]] 
+then 
+		display_usage
+		exit 0
+fi  
+
+#check for first arguemnts in create, delete, list, connect, activate or current
+if [[ ( $1 == "create") ||  $1 == "Create" ||  $1 == "CREATE"  ]] 
+then
+
+	if [[ $2 == "--help" ||  $2 == "-h" ]]
+	then
+		c_create_help
+	elif [[ $2 == "" ]]
+	then
+		c_create
+	else
+		echo "Invalid Command. Greacefully exiting"
+	fi
+
+elif [[ ( $1 == "delete") ||  $1 == "Delete" ||  $1 == "DELETE"  ]]
+then
+
+	if [[ $2 == "--help" ||  $2 == "-h" ]]
+	then
+		c_delete_help
+	elif [[ $2 == "" ]]
+	then
+		c_delete
+	else
+		echo "Invalid Command. Greacefully exiting"
+	fi
+
+elif [[ ( $1 == "list") ||  $1 == "List" ||  $1 == "LIST"  ]]
+then
+
+	if [[ $2 == "--help" ||  $2 == "-h" ]]
+	then
+		c_list_help
+	elif [[ $2 == "" ]]
+	then
+		c_list
+	else
+		echo "Invalid Command. Greacefully exiting"
+	fi
+
+elif [[ ( $1 == "connect") ||  $1 == "Connect" ||  $1 == "CONNECT"  ]]
+then
+
+	if [[ $2 == "--help" ||  $2 == "-h" ]]
+	then
+		c_connect_help
+	elif [[ $2 == "" ]]
+	then
+		c_connect
+	else
+		echo "Invalid Command. Greacefully exiting"
+	fi
+
+elif [[ ( $1 == "current") ||  $1 == "Current" ||  $1 == "CURRENT"  ]]
+then
+
+	if [[ $2 == "--help" ||  $2 == "-h" ]]
+	then
+		c_current_help
+	elif [[ $2 == "" ]]
+	then
+		c_current
+	else
+		echo "Invalid Command. Greacefully exiting"
+	fi
+
+elif [[ ( $1 == "activate") ||  $1 == "Activate" ||  $1 == "ACTIVATE"  ]]
+then
+
+	if [[ $2 == "--help" ||  $2 == "-h" ]]
+	then
+		c_activate_help
+	elif [[ $2 == "" ]]
+	then
+		c_activate
+	else
+		echo "Invalid Command. Greacefully exiting"
+	fi
+
+else
+	display_usage
+fi
