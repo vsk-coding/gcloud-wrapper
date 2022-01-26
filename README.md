@@ -39,4 +39,4 @@ Voila! You are all set. Let's use the script and create some clusters with ease.
 
 ## Here is an asciinema
 
-[![demo](https://github.com/vsk-coding/gcloud-wrapper/blob/main/gcloud-wrapper.gif)](gcloud-wrapper-ascii-cast-demo)
+[![demo](https://github.com/vsk-coding/gcloud-wrapper/blob/main/gcloud-wrapper.gif)](gcloud-wrapper.gif)
