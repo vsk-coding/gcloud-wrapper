@@ -158,7 +158,6 @@ c_connect() {
 		if [[ $create_now == 'y' || $create_now == 'Y' || $create_now == 'yes' || $create_now == 'Yes' || $create_now == 'YES' ]]
 		then
 			c_create
-		else 
 			exit 0
 		fi
 
@@ -200,7 +199,6 @@ c_list() {
 		if [[ $create_now == 'y' || $create_now == 'Y' || $create_now == 'yes' || $create_now == 'Yes' || $create_now == 'YES' ]]
 		then
 			c_create
-		else 
 			exit 0
 		fi
 	else 
