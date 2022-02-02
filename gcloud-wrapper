@@ -160,29 +160,31 @@ c_connect() {
 			c_create
 			exit 0
 		fi
-
 	fi
 
 	d=2
-	echo
-	echo "Found $list_num clusters."
+
+	dval=""
 
 	for (( c=1; c<=list_num; c++ ))
 	do  
-   		echo -ne "\n\t$c. "
-   		dval=$(gcloud container clusters list | sed ''$d'q;d' | awk '{print $1 " [ " $2 " ] "}')
-   		echo $dval
+		dval+="\n\t$c. "
+   		dval+=$(gcloud container clusters list | sed ''$d'q;d' | awk '{print $1 " [ " $2 " ] "}')
    		((++d))
 	done
+
+	echo
+	echo "Found $list_num clusters."
+	echo -e $dval
 	echo
 	echo -en "Please select which one to connect to: "
 	read con_num
 	((++con_num))
 
-	echo 
-	echo -ne "Connecting to "
-	gcloud container clusters list  | sed ''$con_num'q;d' | awk '{print $1 " [ " $2 " ] "}'
-
+	echo
+	con_val=$(gcloud container clusters list  | sed ''$con_num'q;d' | awk '{print $1 " [ " $2 " ] "}') 
+	echo -ne "Connecting to $con_val \n"
+	
 	gcloud container clusters get-credentials $(gcloud container clusters list | sed ''$con_num'q;d' | awk '{print $1}') --zone $(gcloud container clusters list  | sed ''$con_num'q;d' | awk '{print $2}')
 
 }
@@ -213,24 +215,28 @@ c_delete() {
 	list_num=$(gcloud container clusters list | wc -l)
 	list_num=$((list_num-1))
 	d=2
-	echo
-	echo "Found $list_num clusters."
+
+	dval=""
 
 	for (( c=1; c<=list_num; c++ ))
 	do  
-   		echo -ne "\n\t$c. "
-   		dval=$(gcloud container clusters list | sed ''$d'q;d' | awk '{print $1 " [ " $2 " ] "}')
-   		echo $dval
+   		dval+="\n\t$c. "
+   		dval+=$(gcloud container clusters list | sed ''$d'q;d' | awk '{print $1 " [ " $2 " ] "}')
    		((++d))
 	done
+
+	echo
+	echo "Found $list_num clusters."
+	echo -e $dval
 	echo
 	echo -en "Please select which one to delete: "
 	read delete_num
 	((++delete_num))
 
+	del_val=$(gcloud container clusters list  | sed ''$delete_num'q;d' | awk '{print $1 " [ " $2 " ] "}')
+
 	echo 
-	echo -ne "Deleting "
-	gcloud container clusters list  | sed ''$delete_num'q;d' | awk '{print $1 " [ " $2 " ] "}'
+	echo -ne "Deleting $del_val \n"
 
 	echo "y" | gcloud container clusters delete $(gcloud container clusters list | sed ''$delete_num'q;d' | awk '{print $1}') --zone $(gcloud container clusters list  | sed ''$delete_num'q;d' | awk '{print $2}')
 
@@ -242,28 +248,27 @@ c_activate() {
 	list_num=$(gcloud config configurations list | wc -l)
 	list_num=$((list_num-1))
 	d=2
-	echo
-	echo "Found $list_num configurations."
-	#printf "%-10s%-4s|\n"  "${i:0:10}" " "
-	#echo -e "\t#\tNAME\tIS_ACTIVE\tACCOUNT\tPROJECT\tCOMPUTE_DEFAULT_ZONE\tCOMPUTE_DEFAULT_REGION"
-	#| awk '{print "\t" $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 }'
-	echo -ne "\n\t#   "
-	gcloud config configurations list | sed '1q;d'
+
+	dval=""
+
 	for (( c=1; c<=list_num; c++ ))
 	do  
-   		echo -ne "\n\t$c   "
-   		gcloud config configurations list | sed ''$d'q;d' 
-   		#echo $dval
+   		dval+="\n\t$c   "
+   		dval+=$(gcloud config configurations list | sed ''$d'q;d' | awk '{print $1 " [ " $2 " ] "}')
    		((++d))
 	done
+	echo
+	echo "Found $list_num configurations."
+	echo -e $dval
 	echo
 	echo -en "Please select which one to activate: "
 	read active_num
 	((++active_num))
 
+	active_val=$(gcloud config configurations list  | sed ''$active_num'q;d' | awk '{print $1 " [ " $2 " ] "}')
+
 	echo 
-	echo -ne "Activating "
-	gcloud config configurations list  | sed ''$active_num'q;d' | awk '{print $1 " [ " $2 " ] "}'
+	echo -ne "Activating $active_val \n"
 	gcloud config configurations activate $(gcloud config configurations list | sed ''$active_num'q;d' | awk '{print $1}')
 
 }
