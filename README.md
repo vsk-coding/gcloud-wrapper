@@ -16,7 +16,7 @@ With this tool you can
 
  - Clone the repo 
 		```
-		 git cone git@github.com:vsk-coding/gcloud-wrapper.git
+		 git clone git@github.com:vsk-coding/gcloud-wrapper.git
 		 ```
 	
  - Change directory to ***gcloud-wrapper***
